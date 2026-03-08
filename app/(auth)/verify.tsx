@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated, StatusBar } from 'react-native';
+import {
+  View, Text, StyleSheet, Animated, StatusBar, TextInput,
+  TouchableOpacity, Alert, KeyboardAvoidingView, Platform,
+} from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontSize, FontWeight, Spacing } from '../../constants/theme';
@@ -15,32 +18,87 @@ const STEPS = [
 ];
 
 export default function VerifyScreen() {
+  const [phase, setPhase] = useState<'otp' | 'loading'>('otp');
+  const [otp, setOtp] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [completedSteps, setCompletedSteps] = useState(0);
+
+  const verifyOtp = useAppStore((s) => s.verifyOtp);
   const verifyEmployment = useAppStore((s) => s.verifyEmployment);
   const user = useAppStore((s) => s.user);
   const spinAnim = useRef(new Animated.Value(0)).current;
 
+  const handleOtpSubmit = async () => {
+    if (otp.length !== 6) return;
+    setSubmitting(true);
+    const ok = await verifyOtp(otp);
+    setSubmitting(false);
+    if (ok) {
+      setPhase('loading');
+    } else {
+      Alert.alert('Invalid OTP', 'The code you entered is incorrect or has expired. Please try again.');
+      setOtp('');
+    }
+  };
+
   useEffect(() => {
-    // Start spin
+    if (phase !== 'loading') return;
+
     Animated.loop(
       Animated.timing(spinAnim, { toValue: 1, duration: 1000, useNativeDriver: true })
     ).start();
 
-    // Step reveals
     STEPS.forEach((step, i) => {
       setTimeout(() => setCompletedSteps(i + 1), step.delay);
     });
 
-    // Auto-navigate
     const run = async () => {
       await verifyEmployment();
-      router.replace('/(tabs)');
+      router.replace('/(auth)/direct-debit-setup');
     };
     run();
-  }, []);
+  }, [phase]);
 
   const spin = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const allDone = completedSteps >= STEPS.length;
+
+  if (phase === 'otp') {
+    return (
+      <LinearGradient colors={['#CC0000', '#7A0000']} style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#CC0000" />
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.otpInner}>
+          <View style={styles.logoBox}>
+            <Text style={styles.logoText}>OK</Text>
+          </View>
+
+          <Text style={styles.title}>Verify Your Number</Text>
+          <Text style={styles.subtitle}>
+            Enter the 6-digit code sent to your phone.{'\n'}
+            (Check the backend console if using sandbox)
+          </Text>
+
+          <TextInput
+            style={styles.otpInput}
+            value={otp}
+            onChangeText={(v) => setOtp(v.replace(/\D/g, '').slice(0, 6))}
+            keyboardType="numeric"
+            maxLength={6}
+            placeholder="000000"
+            placeholderTextColor="rgba(255,255,255,0.4)"
+            textAlign="center"
+          />
+
+          <TouchableOpacity
+            style={[styles.otpBtn, (otp.length !== 6 || submitting) && { opacity: 0.5 }]}
+            onPress={handleOtpSubmit}
+            disabled={otp.length !== 6 || submitting}
+          >
+            <Text style={styles.otpBtnText}>{submitting ? 'Verifying...' : 'Verify Code'}</Text>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient colors={['#CC0000', '#7A0000']} style={styles.container}>
@@ -53,11 +111,10 @@ export default function VerifyScreen() {
       <Text style={styles.title}>{allDone ? 'All Set!' : 'Verifying Your Employment'}</Text>
       <Text style={styles.subtitle}>
         {allDone
-          ? `Welcome, ${user?.name}! Your wallet is ready.`
+          ? `Welcome, ${user?.name}! One last step — set up direct debit.`
           : 'Please wait while we verify your details...'}
       </Text>
 
-      {/* Spinner */}
       {!allDone && (
         <Animated.View style={[styles.spinner, { transform: [{ rotate: spin }] }]}>
           <View style={styles.spinnerInner} />
@@ -70,7 +127,6 @@ export default function VerifyScreen() {
         </View>
       )}
 
-      {/* Checklist */}
       <View style={styles.checklist}>
         {STEPS.map((step, i) => {
           const done = i < completedSteps;
@@ -89,7 +145,7 @@ export default function VerifyScreen() {
       {allDone && (
         <View style={styles.creditCard}>
           <Text style={styles.creditCardLabel}>Credit Limit Approved</Text>
-          <Text style={styles.creditCardAmount}>${user?.creditLimit?.toFixed(2) ?? '120.00'}</Text>
+          <Text style={styles.creditCardAmount}>${user?.creditLimit?.toFixed(2) ?? '0.00'}</Text>
           <Text style={styles.creditCardSub}>per month · salary deduction</Text>
         </View>
       )}
@@ -99,6 +155,7 @@ export default function VerifyScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl },
+  otpInner: { flex: 1, alignItems: 'center', justifyContent: 'center', width: '100%' },
   logoBox: {
     width: 64, height: 64, backgroundColor: '#FFFFFF',
     borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl,
@@ -106,6 +163,16 @@ const styles = StyleSheet.create({
   logoText: { color: '#CC0000', fontSize: 28, fontWeight: FontWeight.extraBold, letterSpacing: 1 },
   title: { color: '#FFFFFF', fontSize: FontSize.xxl + 2, fontWeight: FontWeight.extraBold, textAlign: 'center', marginBottom: Spacing.xs },
   subtitle: { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.md, textAlign: 'center', marginBottom: Spacing.xl },
+  otpInput: {
+    width: 200, borderBottomWidth: 2, borderColor: '#FFFFFF',
+    color: '#FFFFFF', fontSize: 32, fontWeight: FontWeight.bold,
+    letterSpacing: 8, paddingVertical: Spacing.sm, marginBottom: Spacing.xl,
+  },
+  otpBtn: {
+    backgroundColor: '#FFFFFF', borderRadius: 12,
+    paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl * 2,
+  },
+  otpBtnText: { color: '#CC0000', fontSize: FontSize.md, fontWeight: FontWeight.bold },
   spinner: {
     width: 60, height: 60, borderRadius: 30,
     borderWidth: 4, borderColor: 'rgba(255,255,255,0.2)',

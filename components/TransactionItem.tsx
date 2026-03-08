@@ -49,11 +49,16 @@ export function TransactionItem({ transaction, showDivider = true }: Transaction
         </View>
         <View style={styles.details}>
           <Text style={styles.storeName} numberOfLines={1}>{transaction.storeName}</Text>
-          <Text style={styles.category}>{transaction.category} · {formattedDate} {transaction.time}</Text>
+          <View style={styles.metaRow}>
+            <View style={[styles.categoryPill, { backgroundColor: bg }]}>
+              <Text style={[styles.categoryPillText, { color: text }]}>{transaction.category}</Text>
+            </View>
+            <Text style={styles.dateText}>{formattedDate}</Text>
+          </View>
         </View>
         <View style={styles.amountCol}>
           <Text style={[styles.amount, { color: colors.primary }]}>-${transaction.amount.toFixed(2)}</Text>
-          <Text style={styles.ref} numberOfLines={1}>{transaction.reference.slice(-8)}</Text>
+          <Text style={styles.balance}>${transaction.balance.toFixed(2)} left</Text>
         </View>
       </View>
       {showDivider && <View style={styles.divider} />}
@@ -63,15 +68,18 @@ export function TransactionItem({ transaction, showDivider = true }: Transaction
 
 function createStyles(colors: ReturnType<typeof useThemeColors>) {
   return StyleSheet.create({
-    row: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.sm + 2 },
+    row: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.sm + 4 },
     iconCircle: { width: 44, height: 44, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', marginRight: Spacing.sm },
     emoji: { fontSize: 20 },
     details: { flex: 1, marginRight: Spacing.sm },
-    storeName: { fontSize: FontSize.md, fontWeight: FontWeight.semiBold, color: colors.dark },
-    category: { fontSize: FontSize.xs, color: colors.midGray, marginTop: 2 },
+    storeName: { fontSize: FontSize.md, fontWeight: FontWeight.semiBold, color: colors.dark, marginBottom: 5 },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    categoryPill: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: Radius.full },
+    categoryPillText: { fontSize: 10, fontWeight: FontWeight.semiBold },
+    dateText: { fontSize: FontSize.xs, color: colors.midGray },
     amountCol: { alignItems: 'flex-end' },
     amount: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
-    ref: { fontSize: FontSize.xs, color: colors.midGray, marginTop: 2 },
+    balance: { fontSize: FontSize.xs, color: colors.midGray, marginTop: 3 },
     divider: { height: 1, backgroundColor: colors.lightGray, marginLeft: 52 },
   });
 }

@@ -7,6 +7,7 @@ export default function AuthLayout() {
       <Stack.Screen name="login" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="register" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="verify" options={{ animation: 'fade' }} />
+      <Stack.Screen name="direct-debit-setup" options={{ animation: 'slide_from_right', gestureEnabled: false }} />
     </Stack>
   );
 }

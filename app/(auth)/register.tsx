@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, StatusBar, KeyboardAvoidingView, Platform, useColorScheme,
+  ScrollView, StatusBar, KeyboardAvoidingView, Platform, useColorScheme, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,16 +37,21 @@ export default function RegisterScreen() {
       setStep((s) => (s + 1) as Step);
     } else {
       setLoading(true);
-      const salaryData = SALARY_RANGES.find((r) => r.label === form.salaryRange);
-      await register({
-        name: form.name, nationalId: form.nationalId, phone: form.phone,
-        department: form.department as any, ministry: form.ministry as any,
-        employerCode: form.employerCode,
-        monthlySalary: salaryData?.value ?? 450,
-        creditLimit: salaryData?.creditLimit ?? 120,
-      }, form.pin);
-      setLoading(false);
-      router.push('/(auth)/verify');
+      try {
+        const salaryData = SALARY_RANGES.find((r) => r.label === form.salaryRange);
+        await register({
+          name: form.name, nationalId: form.nationalId, phone: form.phone,
+          department: form.department as any, ministry: form.ministry as any,
+          employerCode: form.employerCode,
+          monthlySalary: salaryData?.value ?? 450,
+          creditLimit: salaryData?.creditLimit ?? 120,
+        }, form.pin);
+        router.push('/(auth)/verify');
+      } catch (e: any) {
+        Alert.alert('Registration Failed', e.message ?? 'Could not reach the server. Check your connection.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 

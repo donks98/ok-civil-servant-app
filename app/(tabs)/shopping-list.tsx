@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, StatusBar, Modal, Alert, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,10 +18,13 @@ export default function ShoppingListScreen() {
   const toggleShoppingItem = useAppStore((s) => s.toggleShoppingItem);
   const removeShoppingItem = useAppStore((s) => s.removeShoppingItem);
   const clearCheckedItems = useAppStore((s) => s.clearCheckedItems);
+  const loadShoppingList = useAppStore((s) => s.loadShoppingList);
 
   const [addVisible, setAddVisible] = useState(false);
   const [itemName, setItemName] = useState('');
   const [itemPrice, setItemPrice] = useState('');
+
+  useEffect(() => { loadShoppingList(); }, []);
 
   const estimatedTotal = shoppingList.reduce((s, i) => s + i.estimatedPrice, 0);
   const checkedTotal = shoppingList.filter((i) => i.checked).reduce((s, i) => s + i.estimatedPrice, 0);

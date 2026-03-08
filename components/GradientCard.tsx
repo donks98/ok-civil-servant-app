@@ -12,7 +12,10 @@ interface GradientCardProps {
 }
 
 export function GradientCard({ wallet, userName, walletId }: GradientCardProps) {
-  const usedPercent = (wallet.amountUsed / wallet.creditLimit) * 100;
+  const usedPercent = Math.min((wallet.amountUsed / wallet.creditLimit) * 100, 100);
+  // Format wallet ID as card-number style: last 8 chars in groups of 4
+  const raw = walletId.replace(/\D/g, '').padStart(8, '0').slice(-8);
+  const maskedNum = `•••• •••• ${raw.slice(0, 4)} ${raw.slice(4)}`;
 
   return (
     <LinearGradient
@@ -24,11 +27,12 @@ export function GradientCard({ wallet, userName, walletId }: GradientCardProps) 
       {/* Decorative circles */}
       <View style={styles.circle1} />
       <View style={styles.circle2} />
+      <View style={styles.circle3} />
 
-      {/* Top row */}
+      {/* Top row: label + OK logo */}
       <View style={styles.topRow}>
         <View>
-          <Text style={styles.cardLabel}>OK Civil Servant Wallet</Text>
+          <Text style={styles.cardLabel}>CIVIL SERVANT WALLET</Text>
           <Text style={styles.userName}>{userName}</Text>
         </View>
         <View style={styles.okBadge}>
@@ -36,7 +40,7 @@ export function GradientCard({ wallet, userName, walletId }: GradientCardProps) 
         </View>
       </View>
 
-      {/* Balance */}
+      {/* Available credit (hero number) */}
       <View style={styles.balanceSection}>
         <Text style={styles.availableLabel}>Available Credit</Text>
         <Text style={styles.availableAmount}>${wallet.availableCredit.toFixed(2)}</Text>
@@ -45,18 +49,22 @@ export function GradientCard({ wallet, userName, walletId }: GradientCardProps) 
       {/* Progress bar */}
       <View style={styles.progressContainer}>
         <View style={styles.progressBg}>
-          <View style={[styles.progressFill, { width: `${Math.min(usedPercent, 100)}%` as any }]} />
+          <View style={[styles.progressFill, { width: `${usedPercent}%` as any }]} />
         </View>
         <View style={styles.progressLabels}>
-          <Text style={styles.progressText}>Used: ${wallet.amountUsed.toFixed(2)}</Text>
-          <Text style={styles.progressText}>Limit: ${wallet.creditLimit.toFixed(2)}</Text>
+          <Text style={styles.progressText}>{usedPercent.toFixed(0)}% utilised</Text>
+          <Text style={styles.progressText}>${wallet.amountUsed.toFixed(2)} of ${wallet.creditLimit.toFixed(0)}</Text>
         </View>
       </View>
 
-      {/* Bottom */}
+      {/* Divider */}
+      <View style={styles.divider} />
+
+      {/* Bottom row: masked number + deduction badge */}
       <View style={styles.bottomRow}>
-        <Text style={styles.walletId}>{walletId}</Text>
+        <Text style={styles.maskedNum}>{maskedNum}</Text>
         <View style={styles.deductionBadge}>
+          <View style={styles.deductionDot} />
           <Text style={styles.deductionText}>Salary Deduction</Text>
         </View>
       </View>
@@ -71,24 +79,35 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.md,
     overflow: 'hidden',
     ...Shadow.lg,
+    shadowColor: '#CC0000',
+    shadowOpacity: 0.35,
   },
   circle1: {
     position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
     backgroundColor: 'rgba(255,255,255,0.07)',
-    top: -60,
-    right: -40,
+    top: -90,
+    right: -60,
   },
   circle2: {
     position: 'absolute',
-    width: 130,
-    height: 130,
-    borderRadius: 65,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
     backgroundColor: 'rgba(255,255,255,0.05)',
-    bottom: -30,
-    left: -20,
+    bottom: -50,
+    left: -30,
+  },
+  circle3: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    top: 40,
+    right: 100,
   },
   topRow: {
     flexDirection: 'row',
@@ -97,26 +116,25 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   cardLabel: {
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(255,255,255,0.6)',
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.medium,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    fontWeight: FontWeight.semiBold,
+    letterSpacing: 1.2,
+    marginBottom: 4,
   },
   userName: {
     color: Colors.white,
     fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
-    marginTop: 2,
+    fontWeight: FontWeight.extraBold,
   },
   okBadge: {
-    width: 44,
-    height: 44,
+    width: 46,
+    height: 46,
     borderRadius: Radius.md,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.3)',
   },
   okText: {
@@ -126,32 +144,32 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   balanceSection: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   availableLabel: {
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.65)',
     fontSize: FontSize.sm,
     fontWeight: FontWeight.medium,
     marginBottom: 4,
   },
   availableAmount: {
     color: Colors.white,
-    fontSize: FontSize.xxxl,
+    fontSize: 38,
     fontWeight: FontWeight.extraBold,
-    letterSpacing: -0.5,
+    letterSpacing: -1,
   },
   progressContainer: {
     marginBottom: Spacing.md,
   },
   progressBg: {
-    height: 6,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    height: 5,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: Radius.full,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: 'rgba(255,255,255,0.85)',
+    backgroundColor: 'rgba(255,255,255,0.9)',
     borderRadius: Radius.full,
   },
   progressLabels: {
@@ -160,26 +178,42 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
   progressText: {
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(255,255,255,0.65)',
     fontSize: FontSize.xs,
     fontWeight: FontWeight.medium,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginBottom: Spacing.md,
   },
   bottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: Spacing.xs,
   },
-  walletId: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: FontSize.xs,
-    letterSpacing: 0.5,
+  maskedNum: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: FontSize.sm,
+    letterSpacing: 1,
+    fontWeight: FontWeight.medium,
   },
   deductionBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingVertical: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingVertical: 4,
     paddingHorizontal: Spacing.sm,
     borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  deductionDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.8)',
   },
   deductionText: {
     color: 'rgba(255,255,255,0.9)',

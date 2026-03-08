@@ -1,15 +1,17 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Modal, TextInput, Alert, Platform, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Modal, TextInput, Alert, Platform, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
+import { router } from 'expo-router';
 import { GradientRed } from '../../constants/colors';
 import { FontSize, FontWeight, Radius, Shadow, Spacing } from '../../constants/theme';
 import { useAppStore } from '../../store/useAppStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useOfflineQR } from '../../hooks/useOfflineQR';
+import { useI18n } from '../../hooks/useI18n';
 
 // Demo transaction for the success screen
 const DEMO_STORE = 'OK Borrowdale';
@@ -22,9 +24,11 @@ function generateRef() {
 export default function PayScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const t = useI18n();
   const user = useAppStore((s) => s.user);
   const wallet = useAppStore((s) => s.wallet);
   const biometricEnabled = useAppStore((s) => s.biometricEnabled);
+  const directDebitActive = useAppStore((s) => s.directDebitActive);
   const [pinVisible, setPinVisible] = useState(false);
   const [pin, setPin] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -87,23 +91,60 @@ export default function PayScreen() {
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
       <LinearGradient colors={[...GradientRed]} style={styles.header}>
-        <Text style={styles.headerTitle}>Pay at Store</Text>
-        <Text style={styles.headerSub}>Present QR code to the OK cashier</Text>
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerTitle}>{t.payTitle}</Text>
+            <Text style={styles.headerSub}>{t.paySub}</Text>
+          </View>
+          <View style={styles.headerBadge}>
+            <View style={styles.headerBadgeDot} />
+            <Text style={styles.headerBadgeText}>Active</Text>
+          </View>
+        </View>
       </LinearGradient>
 
-      {isOffline && (
-        <View style={styles.offlineBanner}>
-          <Ionicons name="cloud-offline-outline" size={14} color="#856404" />
-          <Text style={styles.offlineText}>Offline — showing cached QR code</Text>
-          <TouchableOpacity onPress={() => setIsOffline(false)}>
-            <Text style={styles.offlineRetry}>Retry</Text>
+      {!directDebitActive && (
+        <ScrollView contentContainerStyle={styles.gateContainer} showsVerticalScrollIndicator={false}>
+          <View style={styles.gateLockCircle}>
+            <Ionicons name="lock-closed" size={40} color={colors.primary} />
+          </View>
+          <Text style={styles.gateTitle}>Credit Not Active</Text>
+          <Text style={styles.gateSub}>
+            You need to set up a Direct Debit repayment schedule before you can use your grocery credit.
+          </Text>
+          <View style={styles.gateSteps}>
+            <GateStep num="1" text="Choose your payment channel (EcoCash, Bank, etc.)" />
+            <GateStep num="2" text="Set your deduction day and repayment type" />
+            <GateStep num="3" text="Your credit unlocks immediately after activation" />
+          </View>
+          <TouchableOpacity
+            style={styles.gateBtn}
+            onPress={() => router.push('/(tabs)/direct-debit')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient colors={[...GradientRed]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.gateBtnGrad}>
+              <Ionicons name="card-outline" size={18} color="#FFFFFF" style={{ marginRight: Spacing.sm }} />
+              <Text style={styles.gateBtnText}>Set Up Direct Debit</Text>
+            </LinearGradient>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       )}
+
+      {directDebitActive && (
+        <>
+          {isOffline && (
+            <View style={styles.offlineBanner}>
+              <Ionicons name="cloud-offline-outline" size={14} color="#856404" />
+              <Text style={styles.offlineText}>Offline — showing cached QR code</Text>
+              <TouchableOpacity onPress={() => setIsOffline(false)}>
+                <Text style={styles.offlineRetry}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
       <View style={styles.balancePill}>
         <View style={styles.balancePillInner}>
-          <Text style={styles.balancePillLabel}>Available Credit</Text>
+          <Text style={styles.balancePillLabel}>{t.availableCredit}</Text>
           <Text style={styles.balancePillAmount}>${wallet.availableCredit.toFixed(2)}</Text>
         </View>
       </View>
@@ -123,7 +164,7 @@ export default function PayScreen() {
           <QRCode key={refreshKey} value={qrData} size={200} color={colors.dark} backgroundColor={colors.cardBg} />
         </View>
 
-        <Text style={styles.qrInstruction}>Show this code to the cashier at any OK, Bon Marché, or OKmart store</Text>
+        <Text style={styles.qrInstruction}>{t.showCashier}</Text>
 
         <View style={styles.qrFooter}>
           <View style={styles.qrLimitRow}>
@@ -151,7 +192,7 @@ export default function PayScreen() {
         >
           <LinearGradient colors={[...GradientRed]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.pinBtnGrad}>
             <Ionicons name="lock-closed-outline" size={18} color="#FFFFFF" style={{ marginRight: Spacing.xs }} />
-            <Text style={styles.pinBtnText}>Confirm with PIN</Text>
+            <Text style={styles.pinBtnText}>{t.confirmWithPin}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -164,6 +205,8 @@ export default function PayScreen() {
           </View>
         ))}
       </View>
+        </>
+      )}
 
       {/* PIN Modal */}
       <Modal visible={pinVisible} transparent animationType="slide" onRequestClose={closePinModal}>
@@ -189,10 +232,10 @@ export default function PayScreen() {
                   />
                   <View style={styles.modalBtns}>
                     <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={closePinModal}>
-                      <Text style={styles.cancelText}>Cancel</Text>
+                      <Text style={styles.cancelText}>{t.cancel}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.modalBtn, styles.confirmBtn]} onPress={handleConfirmPay}>
-                      <Text style={styles.confirmText}>Confirm</Text>
+                      <Text style={styles.confirmText}>{t.confirm}</Text>
                     </TouchableOpacity>
                   </View>
                   <Text style={styles.pinHint}>Demo PIN: 123456</Text>
@@ -244,6 +287,17 @@ export default function PayScreen() {
   );
 }
 
+function GateStep({ num, text }: { num: string; text: string }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+      <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#CC0000', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+        <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>{num}</Text>
+      </View>
+      <Text style={{ flex: 1, fontSize: 14, color: '#6B6B6B', lineHeight: 20 }}>{text}</Text>
+    </View>
+  );
+}
+
 function SuccessRow({ label, value, mono, highlight }: { label: string; value: string; mono?: boolean; highlight?: boolean }) {
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E5E5E5' }}>
@@ -259,8 +313,12 @@ function createStyles(c: ReturnType<typeof useThemeColors>) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: c.screenBg },
     header: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.xxl + 10 },
+    headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
     headerTitle: { color: '#FFFFFF', fontSize: FontSize.xxl, fontWeight: FontWeight.extraBold },
     headerSub: { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.sm, marginTop: 4 },
+    headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.2)', paddingVertical: 5, paddingHorizontal: Spacing.sm, borderRadius: Radius.full, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
+    headerBadgeDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#4ADE80' },
+    headerBadgeText: { color: '#FFFFFF', fontSize: FontSize.xs, fontWeight: FontWeight.semiBold },
     offlineBanner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: '#FFF3CD', paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs + 2 },
     offlineText: { flex: 1, fontSize: FontSize.xs, color: '#856404' },
     offlineRetry: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: '#856404', textDecorationLine: 'underline' },
@@ -290,6 +348,15 @@ function createStyles(c: ReturnType<typeof useThemeColors>) {
     storeChips: { flexDirection: 'row', justifyContent: 'center', gap: Spacing.sm },
     storeChip: { backgroundColor: c.lightGray, paddingVertical: Spacing.xs, paddingHorizontal: Spacing.md, borderRadius: Radius.full },
     storeChipText: { color: c.dark, fontSize: FontSize.xs, fontWeight: FontWeight.medium },
+    // Gate (no direct debit)
+    gateContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl, paddingTop: Spacing.xxl },
+    gateLockCircle: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#FFF0F0', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg, borderWidth: 2, borderColor: '#FFCCCC' },
+    gateTitle: { fontSize: FontSize.xxl, fontWeight: FontWeight.extraBold, color: '#1A1A1A', marginBottom: Spacing.sm, textAlign: 'center' },
+    gateSub: { fontSize: FontSize.sm, color: '#6B6B6B', textAlign: 'center', lineHeight: 22, marginBottom: Spacing.xl },
+    gateSteps: { width: '100%', backgroundColor: '#FAFAFA', borderRadius: Radius.lg, padding: Spacing.lg, marginBottom: Spacing.xl, borderWidth: 1, borderColor: '#EEEEEE' },
+    gateBtn: { width: '100%', borderRadius: Radius.lg, overflow: 'hidden', ...Shadow.md },
+    gateBtnGrad: { paddingVertical: Spacing.md + 4, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
+    gateBtnText: { color: '#FFFFFF', fontSize: FontSize.md, fontWeight: FontWeight.bold },
     // PIN modal
     modalOverlay: { flex: 1, backgroundColor: c.overlay, justifyContent: 'flex-end' },
     modalCard: { backgroundColor: c.cardBg, borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, padding: Spacing.xl, paddingBottom: Spacing.xxl },

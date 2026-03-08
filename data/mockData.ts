@@ -9,6 +9,7 @@ export interface User {
   department: Department;
   ministry: Ministry;
   employerCode: string;
+  employeeId?: string;
   monthlySalary: number;
   creditLimit: number;
   walletId: string;

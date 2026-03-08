@@ -4,6 +4,7 @@ import { Stack, router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAppStore } from '../store/useAppStore';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
@@ -71,14 +72,16 @@ function DarkModeScheduler() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthGuard>
-        <DarkModeScheduler />
-        <StatusBar style="auto" />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
-        </Stack>
-      </AuthGuard>
+      <ErrorBoundary fallbackTitle="App Error">
+        <AuthGuard>
+          <DarkModeScheduler />
+          <StatusBar style="auto" />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(tabs)" />
+          </Stack>
+        </AuthGuard>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }

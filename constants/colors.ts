@@ -26,7 +26,7 @@ export const LightColors = {
 export const DarkColors = {
   primary: '#CC0000',
   primaryDark: '#990000',
-  primaryLight: '#FF4444',
+  primaryLight: '#FF3333',
   white: '#1C1C1E',
   offWhite: '#2C2C2E',
   dark: '#F2F2F7',
@@ -53,5 +53,5 @@ export const Colors = LightColors;
 export const GradientRed = ['#CC0000', '#990000'] as const;
 export const GradientRedLight = ['#E83333', '#CC0000'] as const;
 
-export type ThemeColors = typeof LightColors;
+export type ThemeColors = { [K in keyof typeof LightColors]: string };
 export type ColorScheme = 'light' | 'dark' | 'auto';

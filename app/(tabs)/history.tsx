@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, TextInput, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, TextInput, Modal, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -10,7 +10,10 @@ import { TransactionItem } from '../../components/TransactionItem';
 import { Card } from '../../components/ui/Card';
 import { useAppStore } from '../../store/useAppStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useI18n } from '../../hooks/useI18n';
 import { Transaction } from '../../data/mockData';
+import { api } from '../../services/api';
+import { showError } from '../../utils/errorHandler';
 
 const MONTHS = ['March 2026', 'February 2026', 'January 2026'];
 const monthPrefix: Record<string, string> = {
@@ -24,6 +27,7 @@ const DISPUTE_REASONS = ['Incorrect amount', 'Unrecognised transaction', 'Store 
 export default function HistoryScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const t = useI18n();
   const transactions = useAppStore((s) => s.transactions);
   const wallet = useAppStore((s) => s.wallet);
   const [activeMonth, setActiveMonth] = useState('March 2026');
@@ -42,14 +46,19 @@ export default function HistoryScreen() {
   const totalSpent = filtered.reduce((sum, t) => sum + t.amount, 0);
 
   const handleDispute = async () => {
-    if (!disputeReason) return;
+    if (!disputeTxn || !disputeReason) return;
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setSubmitting(false);
-    setDisputeTxn(null);
-    setDisputeReason('');
-    setDisputeNote('');
-    Alert.alert('Dispute Submitted', 'Your dispute has been submitted. We will review within 3 business days.');
+    try {
+      await api.transactions.dispute(disputeTxn.id, disputeReason, disputeNote || undefined);
+      setDisputeTxn(null);
+      setDisputeReason('');
+      setDisputeNote('');
+      Alert.alert('Dispute Submitted', 'Your dispute has been submitted. We will review within 3 business days.');
+    } catch (e) {
+      showError(e, 'Dispute Failed');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -58,12 +67,12 @@ export default function HistoryScreen() {
 
       <LinearGradient colors={[...GradientRed]} style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Transaction History</Text>
-          <Text style={styles.headerSub}>Your OK Civil Servant purchases</Text>
+          <Text style={styles.headerTitle}>{t.historyTitle}</Text>
+          <Text style={styles.headerSub}>{filtered.length} transactions · ${totalSpent.toFixed(2)} spent</Text>
         </View>
         <TouchableOpacity onPress={() => router.push('/(tabs)/analytics')} style={styles.analyticsBtn} activeOpacity={0.8}>
           <Ionicons name="bar-chart-outline" size={18} color="#FFFFFF" />
-          <Text style={styles.analyticsBtnText}>Analytics</Text>
+          <Text style={styles.analyticsBtnText}>{t.analytics}</Text>
         </TouchableOpacity>
       </LinearGradient>
 
@@ -80,17 +89,17 @@ export default function HistoryScreen() {
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryVal}>${totalSpent.toFixed(2)}</Text>
-              <Text style={styles.summaryLbl}>Total Spent</Text>
+              <Text style={styles.summaryLbl}>{t.totalSpent}</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
               <Text style={styles.summaryVal}>{filtered.length}</Text>
-              <Text style={styles.summaryLbl}>Transactions</Text>
+              <Text style={styles.summaryLbl}>{t.transactions}</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
               <Text style={[styles.summaryVal, { color: colors.success }]}>${(wallet.creditLimit - totalSpent).toFixed(2)}</Text>
-              <Text style={styles.summaryLbl}>Remaining</Text>
+              <Text style={styles.summaryLbl}>{t.remaining}</Text>
             </View>
           </View>
           <View style={styles.categories}>
@@ -110,7 +119,7 @@ export default function HistoryScreen() {
         <View style={styles.searchRow}>
           <TextInput
             style={styles.searchInput}
-            placeholder="Search transactions..."
+            placeholder={t.search + '...'}
             value={search}
             onChangeText={setSearch}
             placeholderTextColor={colors.midGray}
@@ -134,7 +143,7 @@ export default function HistoryScreen() {
         ) : (
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>🧾</Text>
-            <Text style={styles.emptyText}>No transactions found</Text>
+            <Text style={styles.emptyText}>{t.noTransactions}</Text>
           </View>
         )}
 
@@ -203,7 +212,9 @@ export default function HistoryScreen() {
                 onPress={handleDispute}
                 disabled={!disputeReason || submitting}
               >
-                <Text style={styles.confirmText}>{submitting ? 'Submitting...' : 'Submit'}</Text>
+                {submitting
+                  ? <ActivityIndicator size="small" color="#FFFFFF" />
+                  : <Text style={styles.confirmText}>Submit</Text>}
               </TouchableOpacity>
             </View>
           </View>

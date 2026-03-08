@@ -15,6 +15,7 @@ import { Badge } from '../../components/ui/Badge';
 import { useAppStore } from '../../store/useAppStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { LOCALE_LABELS, Locale } from '../../constants/i18n';
+import { useI18n } from '../../hooks/useI18n';
 
 const THEME_OPTIONS: { label: string; value: ColorScheme; icon: string }[] = [
   { label: 'Light', value: 'light', icon: '☀️' },
@@ -27,6 +28,7 @@ const LOCALES_LIST: Locale[] = ['en', 'sn', 'nd'];
 export default function ProfileScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const t = useI18n();
   const user = useAppStore((s) => s.user);
   const wallet = useAppStore((s) => s.wallet);
   const transactions = useAppStore((s) => s.transactions);
@@ -107,17 +109,20 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleAddFamily = () => {
+  const handleAddFamily = async () => {
     if (!familyName.trim() || !familyRelationship.trim()) return;
-    addFamilyMember({
-      name: familyName.trim(),
-      relationship: familyRelationship.trim(),
-      nationalId: familyNatId.trim() || 'N/A',
-      subLimit: parseFloat(familyLimit) || 20,
-      amountUsed: 0,
-    });
-    setFamilyName(''); setFamilyRelationship(''); setFamilyNatId(''); setFamilyLimit('');
-    setAddFamilyVisible(false);
+    try {
+      await addFamilyMember({
+        name: familyName.trim(),
+        relationship: familyRelationship.trim(),
+        nationalId: familyNatId.trim() || 'N/A',
+        subLimit: parseFloat(familyLimit) || 20,
+      });
+      setFamilyName(''); setFamilyRelationship(''); setFamilyNatId(''); setFamilyLimit('');
+      setAddFamilyVisible(false);
+    } catch (e: any) {
+      Alert.alert('Failed to Add Member', e.message ?? 'Please try again.');
+    }
   };
 
   return (
@@ -126,34 +131,42 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
 
         <LinearGradient colors={[...GradientRed]} style={styles.header}>
+          {/* Decorative circles */}
+          <View style={styles.profileCircle1} />
+          <View style={styles.profileCircle2} />
           <View style={styles.avatarLarge}>
             <Text style={styles.avatarText}>{user?.avatarInitials}</Text>
           </View>
           <Text style={styles.name}>{user?.name}</Text>
-          <Text style={styles.id}>Employee ID: {user?.id}</Text>
+          <Text style={styles.id}>{user?.ministry?.replace('Ministry of ', '') ?? 'Civil Servant'}</Text>
           <View style={styles.badgeRow}>
-            <Badge label={user?.department ?? ''} variant="primary" style={styles.whiteBadge} />
+            <View style={styles.whiteBadge}>
+              <Text style={styles.whiteBadgeText}>{user?.department}</Text>
+            </View>
+            <View style={[styles.whiteBadge, { backgroundColor: 'rgba(255,255,255,0.12)' }]}>
+              <Text style={styles.whiteBadgeText}>ID: {user?.id}</Text>
+            </View>
           </View>
         </LinearGradient>
 
         <View style={styles.creditRow}>
           <View style={styles.creditItem}>
             <Text style={styles.creditNum}>${wallet.creditLimit.toFixed(0)}</Text>
-            <Text style={styles.creditLbl}>Credit Limit</Text>
+            <Text style={styles.creditLbl}>{t.creditLimit}</Text>
           </View>
           <View style={styles.creditDivider} />
           <View style={styles.creditItem}>
             <Text style={[styles.creditNum, { color: colors.success }]}>${wallet.availableCredit.toFixed(2)}</Text>
-            <Text style={styles.creditLbl}>Available</Text>
+            <Text style={styles.creditLbl}>{t.available}</Text>
           </View>
           <View style={styles.creditDivider} />
           <View style={styles.creditItem}>
             <Text style={[styles.creditNum, { color: colors.primary }]}>${wallet.amountUsed.toFixed(2)}</Text>
-            <Text style={styles.creditLbl}>Used</Text>
+            <Text style={styles.creditLbl}>{t.used}</Text>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Personal Details</Text>
+        <Text style={styles.sectionTitle}>{t.personalDetails}</Text>
         <Card style={styles.card}>
           <InfoRow label="Full Name" value={user?.name ?? ''} colors={colors} />
           <InfoRow label="National ID" value={user?.nationalId ?? ''} colors={colors} />
@@ -161,7 +174,7 @@ export default function ProfileScreen() {
           <InfoRow label="Member Since" value={formatDate(user?.joinedDate ?? '')} colors={colors} last />
         </Card>
 
-        <Text style={styles.sectionTitle}>Employment Details</Text>
+        <Text style={styles.sectionTitle}>{t.employmentDetails}</Text>
         <Card style={styles.card}>
           <InfoRow label="Department" value={user?.department ?? ''} colors={colors} />
           <InfoRow label="Ministry" value={user?.ministry ?? ''} colors={colors} />
@@ -169,16 +182,16 @@ export default function ProfileScreen() {
           <InfoRow label="Monthly Salary" value={`$${user?.monthlySalary?.toFixed(2) ?? '0.00'}`} colors={colors} last />
         </Card>
 
-        <Text style={styles.sectionTitle}>Deduction Schedule</Text>
+        <Text style={styles.sectionTitle}>{t.deductionSchedule}</Text>
         <Card style={styles.card}>
           <InfoRow label="Next Deduction" value={formatDate(wallet.nextDeductionDate)} colors={colors} />
           <InfoRow label="Deduction Amount" value={`$${wallet.nextDeductionAmount.toFixed(2)}`} colors={colors} />
           <InfoRow label="Cycle Period" value={`${wallet.cycleStart} → ${wallet.cycleEnd}`} colors={colors} last />
         </Card>
 
-        <Text style={styles.sectionTitle}>Appearance</Text>
+        <Text style={styles.sectionTitle}>{t.appearance}</Text>
         <Card style={styles.card}>
-          <Text style={styles.themeLabel}>Theme Mode</Text>
+          <Text style={styles.themeLabel}>{t.themeMode}</Text>
           <View style={styles.themeRow}>
             {THEME_OPTIONS.map((opt) => (
               <TouchableOpacity
@@ -201,7 +214,7 @@ export default function ProfileScreen() {
                 onValueChange={(v) => setDarkModeSchedule({ ...darkModeSchedule, enabled: v })}
                 trackColor={{ true: colors.primary }}
               />
-              <Text style={styles.scheduleLabel}>Auto Dark Mode Schedule</Text>
+              <Text style={styles.scheduleLabel}>{t.autoDarkMode}</Text>
               {darkModeSchedule.enabled && (
                 <Text style={styles.scheduleTimes}>{darkModeSchedule.startTime} – {darkModeSchedule.endTime}</Text>
               )}
@@ -209,7 +222,7 @@ export default function ProfileScreen() {
           )}
         </Card>
 
-        <Text style={styles.sectionTitle}>Language</Text>
+        <Text style={styles.sectionTitle}>{t.language}</Text>
         <Card style={styles.card}>
           {LOCALES_LIST.map((loc, i) => (
             <View key={loc}>
@@ -222,7 +235,7 @@ export default function ProfileScreen() {
           ))}
         </Card>
 
-        <Text style={styles.sectionTitle}>Family Sub-accounts</Text>
+        <Text style={styles.sectionTitle}>{t.familyAccounts}</Text>
         <Card noPadding style={styles.card}>
           <View style={{ paddingHorizontal: Spacing.md }}>
             {familyMembers.map((m, i) => (
@@ -250,37 +263,39 @@ export default function ProfileScreen() {
             ))}
             <TouchableOpacity style={styles.addFamilyBtn} onPress={() => setAddFamilyVisible(true)} activeOpacity={0.8}>
               <Ionicons name="person-add-outline" size={16} color={colors.primary} />
-              <Text style={styles.addFamilyText}>+ Add Family Member</Text>
+              <Text style={styles.addFamilyText}>{t.addFamilyMember}</Text>
             </TouchableOpacity>
           </View>
         </Card>
 
-        <Text style={styles.sectionTitle}>Settings</Text>
+        <Text style={styles.sectionTitle}>{t.settings}</Text>
         <Card noPadding style={styles.card}>
           <View style={{ paddingHorizontal: Spacing.md }}>
-            <SettingRow icon="🔑" label="Change PIN" onPress={() => Alert.alert('Change PIN', 'PIN change flow would open here.')} colors={colors} />
+            <SettingRow icon="🔑" label={t.changePIN} onPress={() => Alert.alert(t.changePIN, 'PIN change flow would open here.')} colors={colors} />
             <View style={styles.divider} />
-            <SettingRow icon="🔔" label="Push Notifications" toggle toggleValue={notificationsEnabled} onToggle={setNotificationsEnabled} colors={colors} />
+            <SettingRow icon="🔔" label={t.notifications} toggle toggleValue={notificationsEnabled} onToggle={setNotificationsEnabled} colors={colors} />
             <View style={styles.divider} />
-            <SettingRow icon="👆" label="Biometric Login" toggle toggleValue={biometricEnabled} onToggle={handleBiometricToggle} colors={colors} />
+            <SettingRow icon="👆" label={t.biometricLogin} toggle toggleValue={biometricEnabled} onToggle={handleBiometricToggle} colors={colors} />
             <View style={styles.divider} />
-            <SettingRow icon="📊" label="Spending Analytics" onPress={() => router.push('/(tabs)/analytics')} colors={colors} />
+            <SettingRow icon="📊" label={t.analytics} onPress={() => router.push('/(tabs)/analytics')} colors={colors} />
             <View style={styles.divider} />
-            <SettingRow icon="🛍️" label="Shopping List" onPress={() => router.push('/(tabs)/shopping-list')} colors={colors} />
+            <SettingRow icon="🛍️" label={t.shoppingList} onPress={() => router.push('/(tabs)/shopping-list')} colors={colors} />
             <View style={styles.divider} />
             <SettingRow
               icon="📄"
-              label={generatingPdf ? 'Generating...' : 'Download Statement PDF'}
+              label={generatingPdf ? 'Generating...' : t.downloadStatement}
               onPress={handleDownloadStatement}
               colors={colors}
               rightElement={generatingPdf ? <ActivityIndicator size="small" color={colors.primary} /> : undefined}
             />
             <View style={styles.divider} />
-            <SettingRow icon="💳" label="Request Credit Limit Increase" onPress={() => router.push('/(tabs)/credit-request')} colors={colors} />
+            <SettingRow icon="💳" label={t.creditRequest} onPress={() => router.push('/(tabs)/credit-request')} colors={colors} />
             <View style={styles.divider} />
-            <SettingRow icon="❓" label="Help & Support" onPress={() => Alert.alert('Support', 'Contact OK Zimbabwe: online@okzim.co.zw')} colors={colors} />
+            <SettingRow icon="🏧" label="Direct Debit Setup" onPress={() => router.push('/(tabs)/direct-debit')} colors={colors} />
             <View style={styles.divider} />
-            <SettingRow icon="📜" label="Terms & Conditions" onPress={() => Alert.alert('Terms', 'Civil Servant Credit Programme terms apply.')} colors={colors} />
+            <SettingRow icon="❓" label={t.helpSupport} onPress={() => Alert.alert(t.helpSupport, 'Contact OK Zimbabwe: online@okzim.co.zw')} colors={colors} />
+            <View style={styles.divider} />
+            <SettingRow icon="📜" label={t.terms} onPress={() => Alert.alert(t.terms, 'Civil Servant Credit Programme terms apply.')} colors={colors} />
           </View>
         </Card>
 
@@ -292,7 +307,7 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>Account</Text>
         <Card noPadding style={styles.card}>
           <View style={{ paddingHorizontal: Spacing.md }}>
-            <SettingRow icon="🚪" label="Sign Out" onPress={handleLogout} danger colors={colors} />
+            <SettingRow icon="🚪" label={t.signOut} onPress={handleLogout} danger colors={colors} />
           </View>
         </Card>
 
@@ -401,14 +416,14 @@ function SettingRow({ icon, label, onPress, danger, toggle, toggleValue, onToggl
       activeOpacity={0.7}
       disabled={toggle}
     >
-      <View style={{ width: 36, height: 36, backgroundColor: danger ? '#FFF0F0' : colors.lightGray, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: 38, height: 38, backgroundColor: danger ? '#FFF0F0' : colors.cardBg, borderRadius: 11, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: danger ? '#FFCCCC' : colors.lightGray }}>
         <Text style={{ fontSize: 18 }}>{icon}</Text>
       </View>
       <Text style={{ flex: 1, fontSize: FontSize.md, color: danger ? colors.primary : colors.dark, fontWeight: FontWeight.medium }}>{label}</Text>
       {rightElement ?? (toggle ? (
-        <Switch value={toggleValue} onValueChange={onToggle} trackColor={{ true: colors.primary }} />
+        <Switch value={toggleValue} onValueChange={onToggle} trackColor={{ true: colors.primary }} thumbColor={toggleValue ? '#FFFFFF' : colors.midGray} />
       ) : (
-        <Text style={{ color: colors.midGray, fontSize: FontSize.xl }}>›</Text>
+        <Ionicons name="chevron-forward" size={16} color={colors.midGray} />
       ))}
     </TouchableOpacity>
   );
@@ -417,18 +432,21 @@ function SettingRow({ icon, label, onPress, danger, toggle, toggleValue, onToggl
 function createStyles(c: ReturnType<typeof useThemeColors>) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: c.screenBg },
-    header: { alignItems: 'center', paddingTop: Spacing.xl, paddingBottom: Spacing.xxl, paddingHorizontal: Spacing.xl },
-    avatarLarge: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md, borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)' },
+    header: { alignItems: 'center', paddingTop: Spacing.xl, paddingBottom: Spacing.xxl, paddingHorizontal: Spacing.xl, overflow: 'hidden' },
+    profileCircle1: { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(255,255,255,0.07)', top: -80, right: -60 },
+    profileCircle2: { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.05)', bottom: -40, left: -40 },
+    avatarLarge: { width: 88, height: 88, borderRadius: 44, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md, borderWidth: 3, borderColor: 'rgba(255,255,255,0.4)' },
     avatarText: { color: '#FFFFFF', fontSize: FontSize.xxl, fontWeight: FontWeight.extraBold },
     name: { color: '#FFFFFF', fontSize: FontSize.xxl, fontWeight: FontWeight.extraBold, marginBottom: 4 },
-    id: { color: 'rgba(255,255,255,0.7)', fontSize: FontSize.sm, marginBottom: Spacing.sm },
-    badgeRow: { flexDirection: 'row', gap: Spacing.sm },
-    whiteBadge: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20 },
-    creditRow: { flexDirection: 'row', backgroundColor: c.cardBg, marginHorizontal: Spacing.md, borderRadius: Radius.lg, padding: Spacing.md, ...Shadow.md, marginTop: -Spacing.lg },
-    creditItem: { flex: 1, alignItems: 'center' },
+    id: { color: 'rgba(255,255,255,0.65)', fontSize: FontSize.sm, marginBottom: Spacing.sm },
+    badgeRow: { flexDirection: 'row', gap: Spacing.sm, flexWrap: 'wrap', justifyContent: 'center' },
+    whiteBadge: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, paddingVertical: 4, paddingHorizontal: Spacing.sm, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
+    whiteBadgeText: { color: 'rgba(255,255,255,0.9)', fontSize: FontSize.xs, fontWeight: FontWeight.semiBold },
+    creditRow: { flexDirection: 'row', backgroundColor: c.cardBg, marginHorizontal: Spacing.md, borderRadius: Radius.xl, padding: Spacing.md, ...Shadow.lg, shadowColor: '#000', marginTop: -Spacing.lg },
+    creditItem: { flex: 1, alignItems: 'center', paddingVertical: Spacing.xs },
     creditNum: { fontSize: FontSize.xl, fontWeight: FontWeight.extraBold, color: c.dark },
-    creditLbl: { fontSize: FontSize.xs, color: c.midGray, marginTop: 2 },
-    creditDivider: { width: 1, backgroundColor: c.lightGray },
+    creditLbl: { fontSize: 10, color: c.midGray, marginTop: 3, textTransform: 'uppercase', letterSpacing: 0.5 },
+    creditDivider: { width: 1, backgroundColor: c.lightGray, marginVertical: 4 },
     sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: c.dark, paddingHorizontal: Spacing.xl, marginTop: Spacing.xl, marginBottom: Spacing.sm },
     card: { marginHorizontal: Spacing.md },
     divider: { height: 1, backgroundColor: c.lightGray },
