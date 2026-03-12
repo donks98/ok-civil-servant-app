@@ -25,7 +25,6 @@ export default function DirectDebitSetupScreen() {
   const setDirectDebitActive = useAppStore((s) => s.setDirectDebitActive);
 
   const [channel, setChannel] = useState<Channel>('ECOCASH');
-  const [deductionDay, setDeductionDay] = useState('25');
   const [mobileNumber, setMobileNumber] = useState('');
   const [bankAccount, setBankAccount] = useState('');
   const [bankName, setBankName] = useState('');
@@ -34,11 +33,6 @@ export default function DirectDebitSetupScreen() {
   const [bankPickerOpen, setBankPickerOpen] = useState(false);
 
   const handleSetup = async () => {
-    const day = parseInt(deductionDay, 10);
-    if (!day || day < 1 || day > 28) {
-      Alert.alert('Invalid Day', 'Deduction day must be between 1 and 28.');
-      return;
-    }
     if ((channel === 'ECOCASH' || channel === 'TELECASH' || channel === 'INNBUCKS') && mobileNumber.replace(/\D/g, '').length < 9) {
       Alert.alert('Missing Number', `Please enter your ${CHANNELS.find((c) => c.value === channel)?.label} number.`);
       return;
@@ -56,8 +50,6 @@ export default function DirectDebitSetupScreen() {
         bankAccount: channel === 'BANK_TRANSFER' ? bankAccount : undefined,
         bankName: channel === 'BANK_TRANSFER' ? bankName : undefined,
         bankBranchCode: channel === 'BANK_TRANSFER' ? bankBranchCode || undefined : undefined,
-        deductionDay: day,
-        deductionType: 'FULL_BALANCE',
       });
       setDirectDebitActive(true);
       router.replace('/(tabs)');
@@ -82,11 +74,11 @@ export default function DirectDebitSetupScreen() {
         </View>
         <Text style={styles.title}>Set Up Direct Debit</Text>
         <Text style={styles.subtitle}>
-          Automate your monthly credit repayment so you can start shopping right away.
+          Your full outstanding balance is deducted automatically the moment your salary arrives — no delays, no loopholes.
         </Text>
         <View style={styles.infoPill}>
           <Ionicons name="shield-checkmark-outline" size={14} color="#FFFFFF" />
-          <Text style={styles.infoPillText}>Full balance deducted automatically each month</Text>
+          <Text style={styles.infoPillText}>Deducted instantly on salary payment</Text>
         </View>
       </View>
 
@@ -184,20 +176,6 @@ export default function DirectDebitSetupScreen() {
               </View>
             </>
           )}
-
-          <Text style={styles.sectionLabel}>Deduction Day</Text>
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldHint}>Day of month to deduct (1–28)</Text>
-            <TextInput
-              style={styles.inputFull}
-              value={deductionDay}
-              onChangeText={(v) => setDeductionDay(v.replace(/\D/g, '').slice(0, 2))}
-              placeholder="25"
-              placeholderTextColor="#AAAAAA"
-              keyboardType="numeric"
-              maxLength={2}
-            />
-          </View>
 
           <TouchableOpacity
             style={[styles.setupBtn, loading && { opacity: 0.6 }]}

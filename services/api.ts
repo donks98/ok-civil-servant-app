@@ -1,9 +1,21 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
-// Android emulator  → http://10.0.2.2:3000/api/v1
-// iOS simulator     → http://localhost:3000/api/v1
-// Physical device   → http://<your-LAN-IP>:3000/api/v1
-export const API_BASE = 'http://192.168.240.144:3000/api/v1';
+function getApiBase(): string {
+  // In Expo Go / dev builds, hostUri is the dev server address (e.g. "192.168.x.x:8081")
+  // Reuse that host with the backend port so it works on any network automatically.
+  const hostUri = Constants.expoConfig?.hostUri ?? Constants.manifest?.debuggerHost;
+  if (hostUri) {
+    const host = hostUri.split(':')[0]; // strip the port
+    return `http://${host}:3000/api/v1`;
+  }
+  // Fallback for emulators when hostUri isn't available
+  if (Platform.OS === 'android') return 'http://10.0.2.2:3000/api/v1';
+  return 'http://localhost:3000/api/v1';
+}
+
+export const API_BASE = getApiBase();
 
 async function request<T = any>(path: string, options: RequestInit = {}): Promise<T> {
   const token = await AsyncStorage.getItem('access_token');
@@ -129,9 +141,6 @@ export const api = {
       bankAccount?: string;
       bankName?: string;
       bankBranchCode?: string;
-      deductionDay: number;
-      deductionType: 'FULL_BALANCE' | 'MINIMUM_DUE' | 'FIXED_AMOUNT' | 'PERCENTAGE';
-      fixedAmount?: number;
     }) => request<any>('/direct-debit/schedule', { method: 'POST', body: JSON.stringify(data) }),
     getSchedule: () => request<any>('/direct-debit/schedule'),
   },
